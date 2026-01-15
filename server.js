@@ -83,75 +83,101 @@ async function syncGoldPrices() {
   try {
     // STEP 1: Get gold price
     log("Fetching gold price from FizConnect...", "INFO");
-    const goldResponse = await axios.get(FIZCONNECT_API, {
-      timeout: 8000,
-    });
+
+    const goldResponse = await axios.get(FIZCONNECT_API, { timeout: 8000 });
     const goldPrice = goldResponse.data.gold?.ask || goldResponse.data.goldAsk;
+
     if (!goldPrice) {
       log("No gold price in response", "ERROR");
       return;
     }
-    // Check if price changed significantly
+
     if (lastGoldPrice && Math.abs(goldPrice - lastGoldPrice) > 0.01) {
       log(
         `Gold price changed: $${lastGoldPrice}/oz → $${goldPrice}/oz`,
         "PRICE_CHANGE"
       );
     }
+
     lastGoldPrice = goldPrice;
     const pricePerGram = convertOunceToGram(goldPrice);
+
     // STEP 2: Get products
     log("Fetching products...", "INFO");
+
     const productsResponse = await axios.get(
       `${SMARTWEBI_BASE_URL}/products/?locationId=${LOCATION_ID}`,
       { headers: smartwebiHeaders, timeout: 10000 }
     );
+
     const products = productsResponse.data.products || [];
-    // DEBUG: Log ALL products
     log(`Total products found: ${products.length}`, "DEBUG");
-    if (products.length === 0) {
-      log("WARNING: No products returned from SmartWebi!", "WARN");
-    }
-    products.forEach((p) => {
-      log(
-        `Product: ${p.name} | SKU: ${p.sku} | ID: ${p._id} | Price: ${p.price}`,
-        "DEBUG"
-      );
-    });
+
     let updated = 0;
     let errors = 0;
 
-    // STEP 3: Update each product
+    // STEP 3: For each product → get prices
     for (const product of products) {
       try {
-        if (!product.sku || !product.sku.toUpperCase().includes("GOLD")) {
-          continue;
-        }
-        const { weight, purity } = extractWeightAndPurity(product.sku);
-        if (!weight || weight <= 0) {
-          continue;
-        }
-        const priceBreakdown = calculateFinalPrice(
-          pricePerGram,
-          weight,
-          purity
-        );
-        const newPrice = priceBreakdown.finalPrice;
-        // Update price
-        await axios.put(
-          `${SMARTWEBI_BASE_URL}/products/${product.id}`,
-          { price: newPrice },
+        const productId = product._id || product.id;
+        if (!productId) continue;
+
+        // 🔥 Fetch prices for this product
+        const priceResponse = await axios.get(
+          `${SMARTWEBI_BASE_URL}/products/${productId}/price?locationId=${LOCATION_ID}`,
           { headers: smartwebiHeaders, timeout: 8000 }
         );
-        updated++;
-      } catch (error) {
+
+        const prices = priceResponse.data.prices || [];
+        if (prices.length === 0) continue;
+
+        for (const price of prices) {
+          const sku = price.sku;
+          const priceId = price._id;
+
+          log(
+            `Price Found → Product: ${product.name} | SKU: ${sku} | Current: ${price.amount}`,
+            "DEBUG"
+          );
+
+          if (!sku || !sku.toUpperCase().includes("GOLD")) continue;
+
+          const { weight, purity } = extractWeightAndPurity(sku);
+          if (!weight || weight <= 0) continue;
+
+          const priceBreakdown = calculateFinalPrice(
+            pricePerGram,
+            weight,
+            purity
+          );
+
+          const newPrice = Math.round(priceBreakdown.finalPrice);
+
+          // 🧠 Update PRICE (not product)
+          await axios.put(
+            `${SMARTWEBI_BASE_URL}/products/prices/${priceId}`,
+            { amount: newPrice },
+            { headers: smartwebiHeaders, timeout: 8000 }
+          );
+
+          log(
+            `✓ Updated ${sku}: ${price.amount} → ${newPrice}`,
+            "SUCCESS"
+          );
+
+          updated++;
+        }
+      } catch (err) {
         errors++;
+        log(`Price update failed: ${err.message}`, "ERROR");
       }
     }
+
     updateCount++;
     lastUpdate = new Date();
+
     log(
-      `✓ Sync #${updateCount} complete | Updated: ${updated} products | Gold: $${goldPrice.toFixed(
+      `✓ Sync #${updateCount} complete | Updated: ${updated} prices | Gold: $${goldPrice.toFixed(
         2
       )}/oz`,
       "SUCCESS"
@@ -166,6 +192,7 @@ async function syncGoldPrices() {
     }
   }
 }
+
 // =============== STARTUP ===============
 log("=== AARTI JEWELERS GOLD SYNC STARTED ===", "STARTUP");
 log(
