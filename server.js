@@ -116,13 +116,13 @@ async function syncGoldPrices() {
     let updated = 0;
     let errors = 0;
 
-    // STEP 3: For each product → get prices
+    // STEP 3: Loop products
     for (const product of products) {
       try {
         const productId = product._id || product.id;
         if (!productId) continue;
 
-        // 🔥 Fetch prices for this product
+        // STEP 3.1: Fetch prices for product
         const priceResponse = await axios.get(
           `${SMARTWEBI_BASE_URL}/products/${productId}/price?locationId=${LOCATION_ID}`,
           { headers: smartwebiHeaders, timeout: 8000 }
@@ -131,14 +131,10 @@ async function syncGoldPrices() {
         const prices = priceResponse.data.prices || [];
         if (prices.length === 0) continue;
 
+        // STEP 3.2: Update each GOLD price
         for (const price of prices) {
           const sku = price.sku;
           const priceId = price._id;
-
-          log(
-            `Price Found → Product: ${product.name} | SKU: ${sku} | Current: ${price.amount}`,
-            "DEBUG"
-          );
 
           if (!sku || !sku.toUpperCase().includes("GOLD")) continue;
 
@@ -153,23 +149,23 @@ async function syncGoldPrices() {
 
           const newPrice = Math.round(priceBreakdown.finalPrice);
 
-          // 🧠 Update PRICE (not product)
           await axios.put(
-            `${SMARTWEBI_BASE_URL}/products/prices/${priceId}`,
-            { amount: newPrice },
+            `${SMARTWEBI_BASE_URL}/products/${productId}/price/${priceId}`,
+            {
+              name: price.name || product.name,
+              type: price.type || "one_time",
+              currency: "INR",
+              amount: newPrice,
+              locationId: LOCATION_ID,
+            },
             { headers: smartwebiHeaders, timeout: 8000 }
           );
 
-          log(
-            `✓ Updated ${sku}: ${price.amount} → ${newPrice}`,
-            "SUCCESS"
-          );
-
-          updated++;
+          log(`✓ Updated ${sku}: ${price.amount} → ${newPrice} INR`, "SUCCESS");
         }
       } catch (err) {
         errors++;
-        log(`Price update failed: ${err.message}`, "ERROR");
+        log(`Update failed: ${err.message}`, "ERROR");
       }
     }
 
