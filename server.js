@@ -6,6 +6,7 @@
  * =========================================
  */
 const axios = require("axios");
+const cors=require('cors');
 // =============== CONFIG FROM ENV ===============
 const SMARTWEBI_API_KEY = process.env.SMARTWEBI_API_KEY;
 const LOCATION_ID = process.env.LOCATION_ID;
