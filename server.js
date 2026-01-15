@@ -114,7 +114,7 @@ async function syncGoldPrices() {
     }
     products.forEach((p) => {
       log(
-        `Product: ${p.name} | SKU: ${p.sku} | ID: ${p.id} | Price: ${p.price}`,
+        `Product: ${p.name} | SKU: ${p.sku} | ID: ${p._id} | Price: ${p.price}`,
         "DEBUG"
       );
     });
