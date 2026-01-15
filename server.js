@@ -6,7 +6,7 @@
  * =========================================
  */
 const axios = require("axios");
-const cors=require('cors');
+
 // =============== CONFIG FROM ENV ===============
 const SMARTWEBI_API_KEY = process.env.SMARTWEBI_API_KEY;
 const LOCATION_ID = process.env.LOCATION_ID;
@@ -169,25 +169,37 @@ syncGoldPrices();
 setInterval(syncGoldPrices, UPDATE_INTERVAL);
 // Health check (for Render to keep alive)
 const http = require("http");
+
 const server = http.createServer((req, res) => {
+  // CORS HEADERS
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
+
+  // Handle preflight
+  if (req.method === "OPTIONS") {
+    res.writeHead(204);
+    return res.end();
+  }
+
   if (req.url === "/health") {
-    res.writeHead(200);
-    res.end(
+    res.writeHead(200, { "Content-Type": "application/json" });
+    return res.end(
       JSON.stringify({
         status: "running",
-        lastUpdate: lastUpdate,
+        lastUpdate,
         syncCount: updateCount,
         goldPrice: lastGoldPrice,
       })
     );
-  } else {
-    res.writeHead(200);
-    res.end(
-      "Gold Price Sync Running - Updates every " + UPDATE_INTERVAL + "ms"
-    );
   }
+
+  res.writeHead(200);
+  res.end("Gold Price Sync Running");
 });
+
 const PORT = process.env.PORT || 10000;
 server.listen(PORT, () => {
   log(`Health check server running on port ${PORT}`, "INFO");
 });
+
