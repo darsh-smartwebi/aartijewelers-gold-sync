@@ -107,8 +107,20 @@ async function syncGoldPrices() {
       { headers: smartwebiHeaders, timeout: 10000 }
     );
     const products = productsResponse.data.products || [];
+    // DEBUG: Log ALL products
+    log(`Total products found: ${products.length}`, "DEBUG");
+    if (products.length === 0) {
+      log("WARNING: No products returned from SmartWebi!", "WARN");
+    }
+    products.forEach((p) => {
+      log(
+        `Product: ${p.name} | SKU: ${p.sku} | ID: ${p.id} | Price: ${p.price}`,
+        "DEBUG"
+      );
+    });
     let updated = 0;
     let errors = 0;
+
     // STEP 3: Update each product
     for (const product of products) {
       try {
@@ -202,4 +214,3 @@ const PORT = process.env.PORT || 10000;
 server.listen(PORT, () => {
   log(`Health check server running on port ${PORT}`, "INFO");
 });
-
