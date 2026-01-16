@@ -135,7 +135,6 @@ async function syncGoldPrices() {
         for (const price of prices) {
           const sku = price.sku;
           const priceId = price._id;
-          log('Entering Update for:',price.name);
 
           if (!sku || !sku.toUpperCase().includes("GOLD")) continue;
 
@@ -150,7 +149,7 @@ async function syncGoldPrices() {
 
           const newPrice = Math.round(priceBreakdown.finalPrice);
 
-          await axios.put(
+          const result=await axios.put(
             `${SMARTWEBI_BASE_URL}/products/${productId}/price/${priceId}`,
             {
               name: price.name || product.name,
@@ -161,6 +160,7 @@ async function syncGoldPrices() {
             },
             { headers: smartwebiHeaders, timeout: 4000 }
           );
+          log(result)
 
           log(`✓ Updated ${sku}: ${price.amount} → ${newPrice} USD`, "SUCCESS");
         }
