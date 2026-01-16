@@ -135,6 +135,7 @@ async function syncGoldPrices() {
         for (const price of prices) {
           const sku = price.sku;
           const priceId = price._id;
+          log('Entering Update for:',price.name);
 
           if (!sku || !sku.toUpperCase().includes("GOLD")) continue;
 
@@ -154,14 +155,14 @@ async function syncGoldPrices() {
             {
               name: price.name || product.name,
               type: price.type || "one_time",
-              currency: "INR",
+              currency: "USD",
               amount: newPrice,
               locationId: LOCATION_ID,
             },
-            { headers: smartwebiHeaders, timeout: 8000 }
+            { headers: smartwebiHeaders, timeout: 4000 }
           );
 
-          log(`✓ Updated ${sku}: ${price.amount} → ${newPrice} INR`, "SUCCESS");
+          log(`✓ Updated ${sku}: ${price.amount} → ${newPrice} USD`, "SUCCESS");
         }
       } catch (err) {
         errors++;
