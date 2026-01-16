@@ -149,7 +149,7 @@ async function syncGoldPrices() {
 
           const newPrice = Math.round(priceBreakdown.finalPrice);
 
-          const result = await axios.put(
+          await axios.put(
             `${SMARTWEBI_BASE_URL}/products/${productId}/price/${priceId}`,
             {
               name: price.name || product.name,
@@ -159,18 +159,6 @@ async function syncGoldPrices() {
               locationId: LOCATION_ID,
             },
             { headers: smartwebiHeaders, timeout: 4000 }
-          );
-          log(
-            JSON.stringify(
-              {
-                status: result.status,
-                data: result.data,
-                headers: result.headers,
-              },
-              null,
-              2
-            ),
-            "DEBUG"
           );
 
           log(`✓ Updated ${sku}: ${price.amount} → ${newPrice} USD`, "SUCCESS");
